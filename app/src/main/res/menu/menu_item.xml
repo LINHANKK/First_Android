@@ -10,4 +10,8 @@
         android:title="更换app图标"
         app:showAsAction="never"/>
 
+    <item
+        android:id="@+id/increaseApps"
+        android:title="新建文件夹"
+        app:showAsAction="never"/>
 </menu>

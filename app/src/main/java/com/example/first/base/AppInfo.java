@@ -2,10 +2,31 @@ package com.example.first.base;
 
 import android.graphics.drawable.Drawable;
 
-public class AppInfo {
+import java.io.Serializable;
+
+public class AppInfo implements Serializable {
     private String appName;
     private String packageName;
     private Drawable appIcon;
+    private String Cls;
+
+    public AppInfo(){
+    }
+
+    public AppInfo(String appName, String packageName, Drawable appIcon, String Cls) {
+        this.appName = appName;
+        this.packageName = packageName;
+        this.appIcon = appIcon;
+        this.Cls = Cls;
+    }
+
+    public String getCls() {
+        return Cls;
+    }
+
+    public void setCls(String cls) {
+        Cls = cls;
+    }
 
     public String getPackageName() {
         return packageName;

@@ -39,6 +39,7 @@ public class GetAppsInfo {
             appInfo.setPackageName(resolveInfo.activityInfo.applicationInfo.packageName);
             appInfo.setAppName(resolveInfo.loadLabel(packageManager).toString());
             appInfo.setAppIcon(getResIconFormActyInfo(resolveInfo.activityInfo));
+            appInfo.setCls(resolveInfo.activityInfo.name);
             appInfos.add(appInfo);
         }
     }

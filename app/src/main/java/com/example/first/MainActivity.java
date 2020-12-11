@@ -12,8 +12,10 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
@@ -31,9 +33,12 @@ import com.example.first.base.AppInfo;
 import com.example.first.base.BaseApplication;
 import com.example.first.broadcast.PackageChangeReceiver;
 import com.example.first.utils.GetAppsInfo;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,10 +51,10 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private PackageManager packageManager;
-    private List<ResolveInfo> resolveInfo;
     private List<AppInfo> appInfos;
     private ConstraintLayout linearLayout;
     private RvAdapter rvAdapter;
+    private Context mContext;
 
     PackageChangeReceiver mReceiver = new PackageChangeReceiver();
     IntentFilter filter = new IntentFilter();
@@ -78,12 +83,6 @@ public class MainActivity extends AppCompatActivity {
         linearLayout = findViewById(R.id.linearLayout);
     }
 
-    public List<ResolveInfo> loadApps() {
-        packageManager = this.getPackageManager();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-        return packageManager.queryIntentActivities(mainIntent, 0);
-    }
 
     public List<AppInfo> loadAppsInfo() {
         return new GetAppsInfo(MainActivity.this).getAppList();
@@ -91,7 +90,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void onLauncher() {
         appInfos = loadAppsInfo();
-        resolveInfo = loadApps();
         GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 4);
         recyclerView.setLayoutManager(gridLayoutManager);
         rvAdapter = new RvAdapter(appInfos,packageManager);
@@ -99,11 +97,17 @@ public class MainActivity extends AppCompatActivity {
         rvAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
-                ResolveInfo info = resolveInfo.get(position);
-                ComponentName componentName = new ComponentName(info.activityInfo.packageName, info.activityInfo.name);
-                Intent intent=new Intent();
-                intent.setComponent(componentName);
-                startActivity(intent);
+                AppInfo info = appInfos.get(position);
+                if (info.getPackageName() != null && info.getCls() != null){
+                    ComponentName componentName = new ComponentName(info.getPackageName(), info.getCls());
+                    Intent intent=new Intent();
+                    intent.setComponent(componentName);
+                    startActivity(intent);
+                }else {
+                    Intent intent1 = new Intent();
+                    intent1.setClass(MainActivity.this, FolderActivity.class);
+                    startActivity(intent1);
+                }
             }
 
             //卸载应用
@@ -114,44 +118,51 @@ public class MainActivity extends AppCompatActivity {
                 popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
+                        List<AppInfo> apps1 = new ArrayList<>(appInfos);
+                            switch (item.getItemId()) {
+                                case R.id.removeItem:
+                                    //实现app删除功能
+                                    Intent i = new Intent();
+                                    AppInfo info = appInfos.get(position);
+                                    //该应用的包名
+                                    String pkg = info.getPackageName();
+                                    Uri uri = Uri.parse("package:" + pkg);//获取待删除包名的URI
+                                    i.setAction(Intent.ACTION_DELETE);//设置我们要执行的卸载动作
+                                    i.setData(uri);//设置获取到的URI
+                                    startActivityForResult(i, 0);
+                                    break;
 
-                        switch (item.getItemId()) {
-                            case R.id.removeItem:
-                                //实现app删除功能
-                                Intent i = new Intent();
-                                AppInfo info = appInfos.get(position);
-                                //该应用的包名
-                                String pkg = info.getPackageName();
+                                case R.id.changeIcon:
+                                    if (getUsb) {
+                                        Bitmap bitmap;
+                                        try {
+                                            bitmap = BitmapFactory.decodeStream(new FileInputStream(filePath + "/icon.png"));
+                                        } catch (FileNotFoundException e) {
+                                            bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(""));
+                                        }
 
-                                Uri uri = Uri.parse("package:"+pkg);//获取待删除包名的URI
-                                i.setAction(Intent.ACTION_DELETE);//设置我们要执行的卸载动作
-                                i.setData(uri);//设置获取到的URI
-                                startActivityForResult(i, 0);
-                                break;
+                                        BitmapDrawable bd = new BitmapDrawable(bitmap);
+                                        apps1.get(position).setAppIcon(bd);
 
-                            case R.id.changeIcon:
-                                List<AppInfo> apps1 = new ArrayList<>(appInfos);
-                                if(getUsb) {
-                                    Bitmap bitmap;
-                                    try {
-                                        bitmap = BitmapFactory.decodeStream(new FileInputStream(filePath + "/icon.png"));
-                                    } catch (FileNotFoundException e) {
-                                        bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(""));
+                                    } else {
+                                        Drawable drawable = getResources().getDrawable(R.drawable.icon);
+                                        apps1.get(position).setAppIcon(drawable);
                                     }
 
-                                    BitmapDrawable bd = new BitmapDrawable(bitmap);
-                                    apps1.get(position).setAppIcon(bd);
+                                    rvAdapter.setResolveInfo(apps1);
 
-                                }else {
-                                    Drawable drawable = getResources().getDrawable(R.drawable.icon);
-                                    apps1.get(position).setAppIcon(drawable);
-                                }
+                                    break;
 
-                                rvAdapter.setResolveInfo(apps1);
-                                break;
-                            default:
-                                break;
-                        }
+                                case R.id.increaseApps:
+                                    AppInfo folder = new AppInfo("App文件夹", null
+                                            , getResources().getDrawable(R.drawable.ic_folder), null);
+                                    apps1.add(folder);
+                                    rvAdapter.setResolveInfo(apps1);
+                                    break;
+
+                                default:
+                                    break;
+                            }
 
                         return false;
                     }
@@ -169,13 +180,15 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(mReceiver,filter);
     }
 
-//    public void changeWallPaper(){
-//        //设置背景
-//        WallpaperManager manager = WallpaperManager.getInstance(this);
-//        Drawable drawable = manager.getDrawable();
-//        linearLayout.setBackground(drawable);
-//    }
 
+    public void saveAppInfo(List<AppInfo> appList) {
+        Intent intent = new Intent();
+        intent.setClass(MainActivity.this, FolderActivity.class);
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("appList", (Serializable) appList);
+        intent.putExtras(bundle);
+        startActivity(intent);
+    }
 
     /**
      * 动态权限申请
