@@ -1,7 +1,6 @@
 package com.example.first.adapter;
 
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,9 +8,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.first.base.AppInfo;
 import com.example.first.R;
 
 import java.util.ArrayList;
@@ -20,13 +19,13 @@ import java.util.List;
 
 public class RvAdapter extends RecyclerView.Adapter<RvAdapter.inHolder> {
 
-    List<ResolveInfo> resolveInfo = new ArrayList<>();
+    List<AppInfo> resolveInfo = new ArrayList<>();
     PackageManager packageManager;
     RvAdapter.OnItemClickListener onItemClickListener;
 
-    public void setResolveInfo(List<ResolveInfo> resolveInfo) {
+    public void setResolveInfo(List<AppInfo> resolveInfo) {
         this.resolveInfo.clear();
-        this.resolveInfo = resolveInfo;
+        this.resolveInfo.addAll(resolveInfo);
         notifyDataSetChanged();
     }
 
@@ -34,7 +33,7 @@ public class RvAdapter extends RecyclerView.Adapter<RvAdapter.inHolder> {
         this.onItemClickListener = onItemClickListener;
     }
 
-    public RvAdapter(List<ResolveInfo> resolveInfo, PackageManager packageManager) {
+    public RvAdapter(List<AppInfo> resolveInfo, PackageManager packageManager) {
         this.resolveInfo = resolveInfo;
         this.packageManager = packageManager;
     }
@@ -48,9 +47,9 @@ public class RvAdapter extends RecyclerView.Adapter<RvAdapter.inHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull inHolder holder, int position) {
-        ResolveInfo info = resolveInfo.get(position);
-        holder.imageView.setImageDrawable(info.activityInfo.loadIcon(packageManager));
-        holder.textView.setText(info.loadLabel(packageManager));
+        AppInfo info = resolveInfo.get(position);
+        holder.imageView.setImageDrawable(info.getAppIcon());
+        holder.textView.setText(info.getAppName());
 
         //点击打开app
         holder.itemView.setOnClickListener(new View.OnClickListener() {

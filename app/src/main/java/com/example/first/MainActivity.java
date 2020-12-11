@@ -11,41 +11,45 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.WallpaperManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.LauncherActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 
 import com.example.first.adapter.RvAdapter;
+import com.example.first.base.AppInfo;
 import com.example.first.base.BaseApplication;
 import com.example.first.broadcast.PackageChangeReceiver;
+import com.example.first.utils.GetAppsInfo;
 
-import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends Activity {
+import static com.example.first.broadcast.MediaReceiver.filePath;
+import static com.example.first.broadcast.MediaReceiver.getUsb;
+
+public class MainActivity extends AppCompatActivity {
 
     private int UNINSTALL = 1;
 
     private RecyclerView recyclerView;
     private PackageManager packageManager;
     private List<ResolveInfo> resolveInfo;
+    private List<AppInfo> appInfos;
     private ConstraintLayout linearLayout;
-    private RvAdapter packageAdapter;
+    private RvAdapter rvAdapter;
 
     PackageChangeReceiver mReceiver = new PackageChangeReceiver();
     IntentFilter filter = new IntentFilter();
@@ -60,7 +64,7 @@ public class MainActivity extends Activity {
         onLauncher();
         check();
         //changeWallPaper();
-        onSetWallpaper();
+        //onSetWallpaper();
     }
 
     private void initData() {
@@ -81,13 +85,18 @@ public class MainActivity extends Activity {
         return packageManager.queryIntentActivities(mainIntent, 0);
     }
 
+    public List<AppInfo> loadAppsInfo() {
+        return new GetAppsInfo(MainActivity.this).getAppList();
+    }
+
     public void onLauncher() {
+        appInfos = loadAppsInfo();
         resolveInfo = loadApps();
         GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 4);
         recyclerView.setLayoutManager(gridLayoutManager);
-        packageAdapter = new RvAdapter(resolveInfo,packageManager);
-        recyclerView.setAdapter(packageAdapter);
-        packageAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
+        rvAdapter = new RvAdapter(appInfos,packageManager);
+        recyclerView.setAdapter(rvAdapter);
+        rvAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
                 ResolveInfo info = resolveInfo.get(position);
@@ -105,21 +114,43 @@ public class MainActivity extends Activity {
                 popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
+
                         switch (item.getItemId()) {
                             case R.id.removeItem:
                                 //实现app删除功能
                                 Intent i = new Intent();
-                                ResolveInfo info = resolveInfo.get(position);
+                                AppInfo info = appInfos.get(position);
                                 //该应用的包名
-                                String pkg = info.activityInfo.packageName;
+                                String pkg = info.getPackageName();
 
                                 Uri uri = Uri.parse("package:"+pkg);//获取待删除包名的URI
                                 i.setAction(Intent.ACTION_DELETE);//设置我们要执行的卸载动作
                                 i.setData(uri);//设置获取到的URI
                                 startActivityForResult(i, 0);
+                                break;
 
                             case R.id.changeIcon:
+                                List<AppInfo> apps1 = new ArrayList<>(appInfos);
+                                if(getUsb) {
+                                    Bitmap bitmap;
+                                    try {
+                                        bitmap = BitmapFactory.decodeStream(new FileInputStream(filePath + "/icon.png"));
+                                    } catch (FileNotFoundException e) {
+                                        bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(""));
+                                    }
 
+                                    BitmapDrawable bd = new BitmapDrawable(bitmap);
+                                    apps1.get(position).setAppIcon(bd);
+
+                                }else {
+                                    Drawable drawable = getResources().getDrawable(R.drawable.icon);
+                                    apps1.get(position).setAppIcon(drawable);
+                                }
+
+                                rvAdapter.setResolveInfo(apps1);
+                                break;
+                            default:
+                                break;
                         }
 
                         return false;
@@ -131,8 +162,8 @@ public class MainActivity extends Activity {
         mReceiver.OnPackageChangeListener(new PackageChangeReceiver.PackageChangeListener() {
             @Override
             public void packageChange() {
-                resolveInfo = loadApps();
-                packageAdapter.setResolveInfo(resolveInfo);
+                appInfos = loadAppsInfo();
+                rvAdapter.setResolveInfo(appInfos);
             }
         });
         registerReceiver(mReceiver,filter);
@@ -207,10 +238,10 @@ public class MainActivity extends Activity {
             case 1:
                 if (resultCode == RESULT_OK) {
 
-                    packageAdapter.setResolveInfo(loadApps());
+                    rvAdapter.setResolveInfo(loadAppsInfo());
                 } else {
 
-                    packageAdapter.setResolveInfo(loadApps());
+                    rvAdapter.setResolveInfo(loadAppsInfo());
                 }
         }
 
