@@ -1,5 +1,6 @@
 package com.example.first.base;
 
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 
 import java.io.Serializable;
@@ -7,25 +8,20 @@ import java.io.Serializable;
 public class AppInfo implements Serializable {
     private String appName;
     private String packageName;
+    private String cls;
     private Drawable appIcon;
-    private String Cls;
+    private boolean folder;    //是否是文件夹
+    private String where;    //显示位置（桌面or某个文件夹）
 
-    public AppInfo(){
-    }
+    public AppInfo(){}
 
-    public AppInfo(String appName, String packageName, Drawable appIcon, String Cls) {
+    public AppInfo(String appName, String packageName, String cls,Drawable appIcon,boolean folder,String where,int contain){
         this.appName = appName;
         this.packageName = packageName;
+        this.cls = cls;
         this.appIcon = appIcon;
-        this.Cls = Cls;
-    }
-
-    public String getCls() {
-        return Cls;
-    }
-
-    public void setCls(String cls) {
-        Cls = cls;
+        this.folder = folder;
+        this.where = where;
     }
 
     public String getPackageName() {
@@ -34,6 +30,14 @@ public class AppInfo implements Serializable {
 
     public void setPackageName(String packageName) {
         this.packageName = packageName;
+    }
+
+    public String getCls() {
+        return cls;
+    }
+
+    public void setCls(String cls) {
+        this.cls = cls;
     }
 
     public Drawable getAppIcon() {
@@ -50,5 +54,21 @@ public class AppInfo implements Serializable {
 
     public void setAppName(String appName) {
         this.appName = appName;
+    }
+
+    public boolean isFolder() {
+        return folder;
+    }
+
+    public void setFolder(boolean folder) {
+        this.folder = folder;
+    }
+
+    public String getWhere() {
+        return where;
+    }
+
+    public void setWhere(String where) {
+        this.where = where;
     }
 }

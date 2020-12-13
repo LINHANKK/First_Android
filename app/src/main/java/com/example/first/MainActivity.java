@@ -9,15 +9,13 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -32,9 +30,8 @@ import com.example.first.adapter.RvAdapter;
 import com.example.first.base.AppInfo;
 import com.example.first.base.BaseApplication;
 import com.example.first.broadcast.PackageChangeReceiver;
+import com.example.first.broadcast.PackageDeleteReceiver;
 import com.example.first.utils.GetAppsInfo;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -46,36 +43,38 @@ import static com.example.first.broadcast.MediaReceiver.filePath;
 import static com.example.first.broadcast.MediaReceiver.getUsb;
 
 public class MainActivity extends AppCompatActivity {
-
-    private int UNINSTALL = 1;
+    public static ArrayList<AppInfo> appInfos;    //显示在桌面的（包括app和文件夹）
+    public static ArrayList<AppInfo> folderAppInfos;    //在文件夹中的app
+    private int countFolder;    //类比自增id，唯一标志每个文件夹。初始为0
 
     private RecyclerView recyclerView;
     private PackageManager packageManager;
-    private List<AppInfo> appInfos;
     private ConstraintLayout linearLayout;
     private RvAdapter rvAdapter;
-    private Context mContext;
 
     PackageChangeReceiver mReceiver = new PackageChangeReceiver();
+    PackageDeleteReceiver delReceiver = new PackageDeleteReceiver();
     IntentFilter filter = new IntentFilter();
+    IntentFilter filter_del = new IntentFilter();
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        countFolder = 0;
+        folderAppInfos = new ArrayList<AppInfo>();
         initView();
         initData();
         onLauncher();
         check();
-        //changeWallPaper();
-        //onSetWallpaper();
     }
 
     private void initData() {
         filter.addAction("android.intent.action.PACKAGE_ADDED");    //安装应用
-        filter.addAction("android.intent.action.PACKAGE_REMOVED");    //卸载应用
+        filter_del.addAction("android.intent.action.PACKAGE_REMOVED");    //卸载应用
         filter.addDataScheme("package");    //隐式意图 需匹配Data
+        filter_del.addDataScheme("package");    //隐式意图 需匹配Data
     }
 
     private void initView() {
@@ -84,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public List<AppInfo> loadAppsInfo() {
+    public ArrayList<AppInfo> loadAppsInfo() {
         return new GetAppsInfo(MainActivity.this).getAppList();
     }
 
@@ -98,15 +97,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(View view, int position) {
                 AppInfo info = appInfos.get(position);
-                if (info.getPackageName() != null && info.getCls() != null){
-                    ComponentName componentName = new ComponentName(info.getPackageName(), info.getCls());
-                    Intent intent=new Intent();
-                    intent.setComponent(componentName);
-                    startActivity(intent);
+                if (info.isFolder()){
+                    Intent intent = new Intent();
+                    intent.putExtra("foldername", info.getPackageName());
+                    intent.setClass(MainActivity.this, FolderActivity.class);
+                    startActivityForResult(intent,1000);
                 }else {
-                    Intent intent1 = new Intent();
-                    intent1.setClass(MainActivity.this, FolderActivity.class);
-                    startActivity(intent1);
+                    String pkg = info.getPackageName();    //该应用的包名
+                    String cls = info.getCls();    //应用的主activity类
+                    ComponentName componet = new ComponentName(pkg, cls);
+                    Intent i = new Intent();
+                    i.setComponent(componet);
+                    startActivity(i);
                 }
             }
 
@@ -130,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
                                     i.setAction(Intent.ACTION_DELETE);//设置我们要执行的卸载动作
                                     i.setData(uri);//设置获取到的URI
                                     startActivityForResult(i, 0);
+                                    info.setWhere("del");
                                     break;
 
                                 case R.id.changeIcon:
@@ -150,16 +153,43 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
                                     rvAdapter.setResolveInfo(apps1);
-
                                     break;
 
+                                //新增文件夹
                                 case R.id.increaseApps:
-                                    AppInfo folder = new AppInfo("App文件夹", null
-                                            , getResources().getDrawable(R.drawable.ic_folder), null);
-                                    apps1.add(folder);
-                                    rvAdapter.setResolveInfo(apps1);
-                                    break;
+                                    AppInfo info1 = apps1.get(position);
+                                    if(info1.isFolder()) {    //如果已经是文件夹
+                                        break;
+                                    }
 
+                                    //使用自定义View创建新文件夹图标，替代原本的app图标
+                                    //自定义View加入GridView，刷新页面
+                                    Resources resources = getResources();
+                                    Drawable drawable = resources.getDrawable(R.drawable.ic_folder);
+
+                                    AppInfo infoInFolder = new AppInfo();
+                                    //保留：包名、app名、类名、图标、是否为文件夹
+                                    infoInFolder.setPackageName(info1.getPackageName());
+                                    infoInFolder.setAppName(info1.getAppName());
+                                    infoInFolder.setCls(info1.getCls());
+                                    infoInFolder.setAppIcon(info1.getAppIcon());
+                                    infoInFolder.setFolder(info1.isFolder());
+
+                                    //将当前position的app信息修改为文件夹信息
+                                    info1.setAppIcon(drawable);
+                                    info1.setFolder(true);    //提示本应用为文件夹
+                                    countFolder++;    //文件夹id递增
+                                    info1.setPackageName(String.valueOf( countFolder));
+                                    info1.setAppName("文件夹");
+
+                                    //表示该app放在文件夹中
+                                    infoInFolder.setWhere(info1.getPackageName());    //显示位置设为 该文件夹的唯一标志
+
+                                    folderAppInfos.add(infoInFolder);
+
+                                    rvAdapter.setResolveInfo(apps1);
+
+                                    break;
                                 default:
                                     break;
                             }
@@ -178,17 +208,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         registerReceiver(mReceiver,filter);
+
+        delReceiver.OnPackageDeleteListener(new PackageDeleteReceiver.PackageDeleteListener() {
+            @Override
+            public void packageDelete() {
+                int index = 0;
+                for(AppInfo delInfo: appInfos){
+                    if(delInfo.getWhere().equals("del")){
+                        //找到需要删除的图标
+                        index = appInfos.indexOf(delInfo);
+                        break;
+                    }
+                }
+                appInfos.remove(index);
+                rvAdapter.setResolveInfo(appInfos);
+            }
+        });
+        registerReceiver(delReceiver, filter_del);
+
     }
 
-
-    public void saveAppInfo(List<AppInfo> appList) {
-        Intent intent = new Intent();
-        intent.setClass(MainActivity.this, FolderActivity.class);
-        Bundle bundle = new Bundle();
-        bundle.putSerializable("appList", (Serializable) appList);
-        intent.putExtras(bundle);
-        startActivity(intent);
-    }
 
     /**
      * 动态权限申请
@@ -230,33 +269,20 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void onSetWallpaper() {
-        //生成一个设置壁纸的请求
-        final Intent pickWallpaper = new Intent(Intent.ACTION_SET_WALLPAPER);
-        Intent chooser = Intent.createChooser(pickWallpaper,"chooser_wallpaper");
-        //发送设置壁纸的请求
-        startActivity(chooser);
-    }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(mReceiver);
+        unregisterReceiver(delReceiver);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode) {
-            case 1:
-                if (resultCode == RESULT_OK) {
+        super.onActivityResult(requestCode,resultCode,data);
 
-                    rvAdapter.setResolveInfo(loadAppsInfo());
-                } else {
-
-                    rvAdapter.setResolveInfo(loadAppsInfo());
-                }
+        if(requestCode == 1000 && resultCode == 1001){
+            ArrayList<AppInfo> list1 = new ArrayList<>(appInfos);
+            rvAdapter.setResolveInfo(list1);
         }
-
     }
 }
