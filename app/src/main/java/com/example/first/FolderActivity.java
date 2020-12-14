@@ -73,11 +73,9 @@ public class FolderActivity extends Activity {
 
                 if(info.getWhere().equals("addMore")){
                     //添加更多
-
                     showPopupWindow();
                 }else{
                     //打开应用
-
                     String pkg = info.getPackageName();    //该应用的包名
                     String cls = info.getCls();    //应用的主activity类
 
@@ -100,6 +98,7 @@ public class FolderActivity extends Activity {
                 onDestroy();
             }
         });
+
     }
 
     /**
@@ -111,9 +110,36 @@ public class FolderActivity extends Activity {
         GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 3);
         rv_icons.setLayoutManager(gridLayoutManager);
         appsAdapter = new RvAdapter(folderInfos, packageManager);
+        sysData();
         rv_icons.setAdapter(appsAdapter);
     }
+    public void sysData(){
+        appsAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(View view, int position) {
+                AppInfo info = folderInfos.get(position);
 
+                if(info.getWhere().equals("addMore")){
+                    //添加更多
+                    showPopupWindow();
+                }else{
+                    //打开应用
+                    String pkg = info.getPackageName();    //该应用的包名
+                    String cls = info.getCls();    //应用的主activity类
+
+                    ComponentName componet = new ComponentName(pkg, cls);
+
+                    Intent i = new Intent();
+                    i.setComponent(componet);
+                    startActivity(i);
+                }
+        }
+
+        @Override
+        public void onItemLongClick(View view, int position) {
+        }
+    });
+}
     /**
      * 在用户作出选择后调用，整理apps位置
      */
@@ -171,7 +197,6 @@ public class FolderActivity extends Activity {
         TextView tv_confirm = contentView.findViewById(R.id.tv_confirm);
         TextView tv_cancel = contentView.findViewById(R.id.tv_cancel);
 
-        //gv_choose.setSelector(new ColorDrawable(Color.TRANSPARENT));
         final ArrayList<AppInfo> infoChoose = new ArrayList<>();
 
         for(AppInfo info: folderInfos){

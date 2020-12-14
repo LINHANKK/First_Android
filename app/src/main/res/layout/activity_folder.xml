@@ -16,8 +16,8 @@
 
         <!--这一层用于背景美化-->
         <RelativeLayout
-            android:layout_width="260dp"
-            android:layout_height="260dp"
+            android:layout_width="350dp"
+            android:layout_height="350dp"
             android:layout_centerInParent="true"
             android:clickable="true"
             android:background="@drawable/adialog_style">
@@ -25,11 +25,11 @@
             <!--显示图标-->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_icons"
-                android:layout_width="240dp"
-                android:layout_height="240dp"
+                android:layout_width="320dp"
+                android:layout_height="320dp"
                 android:layout_centerInParent="true"
                 android:clickable="true"/>
 
-        </RelativeLayout>>
+        </RelativeLayout>
     </RelativeLayout>
 </RelativeLayout>

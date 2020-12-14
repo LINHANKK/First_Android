@@ -3,7 +3,7 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="350dp"
-    android:layout_height="455dp"
+    android:layout_height="520dp"
     android:orientation="vertical"
     android:paddingBottom="2dp"
     android:background="@drawable/adialog_style">
@@ -11,7 +11,7 @@
     <GridView
         android:id="@+id/gv_choose"
         android:layout_width="330dp"
-        android:layout_height="405dp"
+        android:layout_height="470dp"
         android:layout_gravity="center_horizontal"
         android:gravity="center"
         android:numColumns="3"/>
