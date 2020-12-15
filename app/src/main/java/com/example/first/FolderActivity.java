@@ -5,18 +5,22 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.CheckBox;
 import android.widget.GridView;
-import android.widget.ListAdapter;
+import android.widget.PopupMenu;
 import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -24,12 +28,18 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.first.adapter.ChooseAdapter;
+import com.example.first.adapter.FolderAdapter;
 import com.example.first.adapter.RvAdapter;
 import com.example.first.base.AppInfo;
 import com.example.first.utils.GetAppsInfo;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.List;
+
+import static com.example.first.broadcast.MediaReceiver.filePath;
+import static com.example.first.broadcast.MediaReceiver.getUsb;
 
 
 public class FolderActivity extends Activity {
@@ -51,7 +61,6 @@ public class FolderActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_folder);
-
         rl_qDialog = findViewById(R.id.rl_qDialog);
         rv_icons = findViewById(R.id.rv_icons);
 
@@ -65,32 +74,7 @@ public class FolderActivity extends Activity {
         addBtn.setWhere("addMore");    //该属性对文件夹中其它app已无意义，设它为标志不会冲突
 
         init();
-
-        appsAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(View view, int position) {
-                AppInfo info = folderInfos.get(position);
-
-                if(info.getWhere().equals("addMore")){
-                    //添加更多
-                    showPopupWindow();
-                }else{
-                    //打开应用
-                    String pkg = info.getPackageName();    //该应用的包名
-                    String cls = info.getCls();    //应用的主activity类
-
-                    ComponentName componet = new ComponentName(pkg, cls);
-
-                    Intent i = new Intent();
-                    i.setComponent(componet);
-                    startActivity(i);
-                }
-            }
-
-            @Override
-            public void onItemLongClick(View view, int position) {
-            }
-        });
+        sysData();
 
         rl_qDialog.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -113,6 +97,7 @@ public class FolderActivity extends Activity {
         sysData();
         rv_icons.setAdapter(appsAdapter);
     }
+
     public void sysData(){
         appsAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
             @Override
@@ -133,13 +118,12 @@ public class FolderActivity extends Activity {
                     i.setComponent(componet);
                     startActivity(i);
                 }
-        }
-
-        @Override
-        public void onItemLongClick(View view, int position) {
-        }
-    });
-}
+            }
+            @Override
+            public void onItemLongClick(View view, int position) {
+            }
+        });
+    }
     /**
      * 在用户作出选择后调用，整理apps位置
      */
@@ -229,7 +213,7 @@ public class FolderActivity extends Activity {
             }
         }
 
-        final ChooseAdapter chooseAdapter = new ChooseAdapter(FolderActivity.this, infoChoose);
+        final FolderAdapter folderAdapter = new FolderAdapter(FolderActivity.this, infoChoose);
         final ArrayList<String> isIconChecked = new ArrayList<>();
 
         for(AppInfo appInfo: infoChoose){    //初始化
@@ -239,7 +223,7 @@ public class FolderActivity extends Activity {
                 isIconChecked.add("desk");
         }
 
-        gv_choose.setAdapter(chooseAdapter);
+        gv_choose.setAdapter(folderAdapter);
         gv_choose.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {

@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            //卸载应用
+            //长按应用：卸载功能，更换图标，新建文件夹
             @Override
             public void onItemLongClick(View view, int position) {
                 PopupMenu popupMenu = new PopupMenu(MainActivity.this,view);
@@ -136,17 +136,16 @@ public class MainActivity extends AppCompatActivity {
                                     break;
 
                                 case R.id.changeIcon:
-                                    if (getUsb) {
+                                    //更换app图标
+                                    if (getUsb) {   //判断是否插入U盘
                                         Bitmap bitmap;
                                         try {
                                             bitmap = BitmapFactory.decodeStream(new FileInputStream(filePath + "/icon.png"));
                                         } catch (FileNotFoundException e) {
                                             bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(""));
                                         }
-
                                         BitmapDrawable bd = new BitmapDrawable(bitmap);
                                         apps1.get(position).setAppIcon(bd);
-
                                     } else {
                                         Drawable drawable = getResources().getDrawable(R.drawable.icon);
                                         apps1.get(position).setAppIcon(drawable);
@@ -155,8 +154,8 @@ public class MainActivity extends AppCompatActivity {
                                     rvAdapter.setResolveInfo(apps1);
                                     break;
 
-                                //新增文件夹
                                 case R.id.increaseApps:
+                                    //新增文件夹
                                     AppInfo info1 = apps1.get(position);
                                     if(info1.isFolder()) {    //如果已经是文件夹
                                         break;
@@ -167,29 +166,23 @@ public class MainActivity extends AppCompatActivity {
                                     Resources resources = getResources();
                                     Drawable drawable = resources.getDrawable(R.drawable.ic_folder);
 
-                                    AppInfo infoInFolder = new AppInfo();
                                     //保留：包名、app名、类名、图标、是否为文件夹
-                                    infoInFolder.setPackageName(info1.getPackageName());
-                                    infoInFolder.setAppName(info1.getAppName());
-                                    infoInFolder.setCls(info1.getCls());
-                                    infoInFolder.setAppIcon(info1.getAppIcon());
-                                    infoInFolder.setFolder(info1.isFolder());
+                                    AppInfo infoInFolder = new AppInfo(info1.getAppName(),info1.getPackageName(),info1.getCls(),
+                                            info1.getAppIcon(),info1.isFolder(),"");
 
                                     //将当前position的app信息修改为文件夹信息
                                     info1.setAppIcon(drawable);
                                     info1.setFolder(true);    //提示本应用为文件夹
                                     countFolder++;    //文件夹id递增
-                                    info1.setPackageName(String.valueOf( countFolder));
+                                    info1.setPackageName(String.valueOf(countFolder));
                                     info1.setAppName("文件夹");
 
                                     //表示该app放在文件夹中
                                     infoInFolder.setWhere(info1.getPackageName());    //显示位置设为 该文件夹的唯一标志
-
                                     folderAppInfos.add(infoInFolder);
-
                                     rvAdapter.setResolveInfo(apps1);
-
                                     break;
+
                                 default:
                                     break;
                             }

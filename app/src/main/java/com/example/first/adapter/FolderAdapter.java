@@ -16,11 +16,11 @@ import com.example.first.base.AppInfo;
 
 import java.util.List;
 
-public class ChooseAdapter extends BaseAdapter {
+public class FolderAdapter extends BaseAdapter {
     List<AppInfo> Apps;
     Context context;
 
-    public ChooseAdapter(Context context,List<AppInfo> Apps) {
+    public FolderAdapter(Context context, List<AppInfo> Apps) {
         this.Apps = Apps;
         this.context = context;
     }

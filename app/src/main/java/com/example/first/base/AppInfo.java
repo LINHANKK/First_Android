@@ -15,7 +15,7 @@ public class AppInfo implements Serializable {
 
     public AppInfo(){}
 
-    public AppInfo(String appName, String packageName, String cls,Drawable appIcon,boolean folder,String where,int contain){
+    public AppInfo(String appName, String packageName, String cls,Drawable appIcon,boolean folder,String where){
         this.appName = appName;
         this.packageName = packageName;
         this.cls = cls;
