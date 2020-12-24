@@ -11,17 +11,21 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.PixelFormat;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.PopupMenu;
@@ -31,8 +35,16 @@ import com.example.first.base.AppInfo;
 import com.example.first.base.BaseApplication;
 import com.example.first.broadcast.PackageChangeReceiver;
 import com.example.first.broadcast.PackageDeleteReceiver;
+import com.example.first.utils.DataCacheUtils;
 import com.example.first.utils.GetAppsInfo;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
+import org.litepal.LitePal;
+import org.litepal.crud.DataSupport;
+
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.Serializable;
@@ -64,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         countFolder = 0;
         folderAppInfos = new ArrayList<AppInfo>();
+        LitePal.getDatabase();
         initView();
         initData();
         onLauncher();
@@ -88,11 +101,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onLauncher() {
-        appInfos = loadAppsInfo();
-        GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 4);
+        List<AppInfo> allApps = DataSupport.findAll(AppInfo.class);
+        if (allApps.size() != 0) {
+            updateImg(allApps);
+            Log.e("appcount111",allApps.size()+"");
+            appInfos = (ArrayList<AppInfo>) allApps;
+            //查看app图标
+            Log.e("appIcon", String.valueOf(allApps.get(0).getAppIcon()));
+            Log.e("appName", allApps.get(0).getAppName());
+        }else {
+            appInfos = loadAppsInfo();
+        }
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 5);
         recyclerView.setLayoutManager(gridLayoutManager);
         rvAdapter = new RvAdapter(appInfos,packageManager);
         recyclerView.setAdapter(rvAdapter);
+        Log.e("appcount",appInfos.size()+"");
         rvAdapter.setOnItemClickListener(new RvAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
@@ -120,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                 popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        List<AppInfo> apps1 = new ArrayList<>(appInfos);
+                        ArrayList<AppInfo> apps1 = new ArrayList<>(appInfos);
                             switch (item.getItemId()) {
                                 case R.id.removeItem:
                                     //实现app删除功能
@@ -150,8 +174,8 @@ public class MainActivity extends AppCompatActivity {
                                         Drawable drawable = getResources().getDrawable(R.drawable.icon);
                                         apps1.get(position).setAppIcon(drawable);
                                     }
-
-                                    rvAdapter.setResolveInfo(apps1);
+                                    appInfos = apps1;
+                                    rvAdapter.setResolveInfo(appInfos);
                                     break;
 
                                 case R.id.increaseApps:
@@ -164,7 +188,7 @@ public class MainActivity extends AppCompatActivity {
                                     //使用自定义View创建新文件夹图标，替代原本的app图标
                                     //自定义View加入GridView，刷新页面
                                     Resources resources = getResources();
-                                    Drawable drawable = resources.getDrawable(R.drawable.ic_folder);
+                                    Drawable drawable = resources.getDrawable(R.drawable.folder);
 
                                     //保留：包名、app名、类名、图标、是否为文件夹
                                     AppInfo infoInFolder = new AppInfo(info1.getAppName(),info1.getPackageName(),info1.getCls(),
@@ -218,7 +242,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         registerReceiver(delReceiver, filter_del);
-
     }
 
 
@@ -263,7 +286,33 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+//        if (getSPInfo(this, "allApps") != null){
+//            List<AppInfo> apps2 = new ArrayList<>(appInfos);
+//            apps2 = getSPInfo(this, "allApps");
+//            GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 5);
+//            recyclerView.setLayoutManager(gridLayoutManager);
+//            rvAdapter = new RvAdapter(apps2,packageManager);
+//            recyclerView.setAdapter(rvAdapter);
+//            rvAdapter.setResolveInfo(apps2);
+//            Log.e("appssssss", ""+getSPInfo(this, "allApps").size());
+//            Log.e("appsssssssss",apps2.get(0).toString());
+//        }
+//        if (DataCacheUtils.loadListCache(this, "allApps") != null){
+//            Log.e("aaaaaaaaaaaaaaaaaaa", String.valueOf(DataCacheUtils.loadListCache(this, "allApps").size()));
+//        }
+        super.onResume();
+    }
+
+    @Override
     protected void onDestroy() {
+//        setSPInfo(appInfos, this, "allApps");
+//        DataCacheUtils.saveListCache(this, appInfos, "allApps");
+//        for(AppInfo allApp : appInfos) {
+//            allApp.setImgStr(drawableToByte(allApp.getAppIcon()));
+//            allApp.save();
+//        }
+        updateImgStr();
         super.onDestroy();
         unregisterReceiver(mReceiver);
         unregisterReceiver(delReceiver);
@@ -278,4 +327,99 @@ public class MainActivity extends AppCompatActivity {
             rvAdapter.setResolveInfo(list1);
         }
     }
+
+    public synchronized Drawable byteToDrawable(String icon) {
+        byte[] img= Base64.decode(icon.getBytes(), Base64.DEFAULT);
+        Bitmap bitmap;
+        if (img != null) {
+            bitmap = BitmapFactory.decodeByteArray(img,0, img.length);
+            @SuppressWarnings("deprecation")
+            Drawable drawable = new BitmapDrawable(bitmap);
+
+            return drawable;
+        }
+        return null;
+    }
+
+    public  synchronized  String drawableToByte(Drawable drawable) {
+        if (drawable != null) {
+            Bitmap bitmap = Bitmap
+                    .createBitmap(
+                            drawable.getIntrinsicWidth(),
+                            drawable.getIntrinsicHeight(),
+                            drawable.getOpacity() != PixelFormat.OPAQUE ? Bitmap.Config.ARGB_8888
+                                    : Bitmap.Config.RGB_565);
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight());
+            drawable.draw(canvas);
+            int size = bitmap.getWidth() * bitmap.getHeight() * 4;
+
+            // 创建一个字节数组输出流,流的大小为size
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(size);
+            // 设置位图的压缩格式，质量为100%，并放入字节数组输出流中
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            // 将字节数组输出流转化为字节数组byte[]
+            byte[] imagedata = baos.toByteArray();
+
+            String icon= Base64.encodeToString(imagedata, Base64.DEFAULT);
+            return icon;
+        }
+        return null;
+    }
+
+    private void updateImgStr() {
+        new Thread(){
+            @Override
+            public void run() {
+                for(int i = 0; i < appInfos.size(); i++) {
+                    appInfos.get(i).setImgStr(drawableToByte(appInfos.get(i).getAppIcon()));
+                    appInfos.get(i).save();
+                }
+//                app.setImgStr(drawableToByte(app.getAppIcon()));
+//                app.save();
+//                Log.e("aapppsize", appInfos.size()+"");
+            }
+        }.start();
+    }
+
+    private List<AppInfo> updateImg(List<AppInfo> list) {
+        List<AppInfo> list1 = new ArrayList<>();
+        new Thread(){
+            @Override
+            public void run() {
+                for(int i = 0; i < list.size(); i++) {
+                    list.get(i).setAppIcon(byteToDrawable(list.get(i).getImgStr()));
+                    list1.add(list.get(i));
+                }
+            }
+        }.start();
+        return list1;
+    }
+
+//    public void setSPInfo(List<AppInfo> namelist, Context context, String name){
+//        SharedPreferences sp = context.getSharedPreferences(name, Activity.MODE_PRIVATE);//创建sp对象
+//        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+//        String jsonStr = gson.toJson(namelist); //将List转换成Json
+//        SharedPreferences.Editor editor = sp.edit() ;
+//        editor.remove("KEY_NewUserModel_LIST_DATA");
+//        editor.apply();
+//        editor.putString("KEY_NewUserModel_LIST_DATA", jsonStr) ; //存入json串
+//        editor.commit() ;  //提交
+//    }
+//
+//    public List<AppInfo> getSPInfo(Context context, String name){
+//        SharedPreferences sp = context.getSharedPreferences(name,Activity.MODE_PRIVATE);//创建sp对象,如果有key为"SP_PEOPLE"的sp就取出
+//        String peopleListJson = sp.getString("KEY_NewUserModel_LIST_DATA","");  //取出key为"KEY_PEOPLE_DATA"的值，如果值为空，则将第二个参数作为默认值赋值
+//        if(!peopleListJson.equals(""))  //防空判断
+//        {
+//            List<AppInfo> list11 = new ArrayList<AppInfo>();
+//            Gson gson = new Gson();
+//            list11 = gson.fromJson(peopleListJson, new TypeToken<List<AppInfo>>() {}.getType()); //将json字符串转换成List集合
+//            return list11;
+//        }else {
+//            return null;
+//        }
+//    }
+//
 }

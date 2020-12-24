@@ -1,6 +1,7 @@
 package com.example.first.adapter;
 
 import android.content.pm.PackageManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,6 +51,7 @@ public class RvAdapter extends RecyclerView.Adapter<RvAdapter.inHolder> {
         AppInfo info = resolveInfo.get(position);
         holder.imageView.setImageDrawable(info.getAppIcon());
         holder.textView.setText(info.getAppName());
+
 
         //点击打开app
         holder.itemView.setOnClickListener(new View.OnClickListener() {

@@ -7,8 +7,11 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class BaseApplication extends Application {
+import org.litepal.LitePal;
+import org.litepal.LitePalApplication;
+
+public class BaseApplication extends LitePalApplication {
     public static int WRITE_EXTERNAL_STORAGE=1;
-    public static int CODE_FOR_CAMERA_PERMISSION=2;
+    public static String PICTURE_BYTE = "image";
 
 }
